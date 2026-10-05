@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>AR Fan - Hiro Marker</title>
+
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+
+  <!-- AR.js -->
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, "Noto Sans Thai", sans-serif;
+      background: #000;
+    }
+
+    #ui {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      width: min(94vw, 540px);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    #status {
+      align-self: center;
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.68);
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+      backdrop-filter: blur(8px);
+    }
+
+    #temperatureBox {
+      display: none;
+      align-self: center;
+      padding: 12px 20px;
+      border-radius: 14px;
+      background: rgba(0, 92, 160, .88);
+      color: #fff;
+      font-size: 20px;
+      font-weight: 800;
+      box-shadow: 0 6px 18px rgba(0,0,0,.28);
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    button {
+      border: none;
+      border-radius: 14px;
+      padding: 15px 12px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      box-shadow: 0 6px 18px rgba(0,0,0,.32);
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:active {
+      transform: scale(.97);
+    }
+
+    #powerBtn {
+      background: rgba(20, 155, 100, .95);
+    }
+
+    #tempBtn {
+      background: rgba(15, 100, 220, .95);
+    }
+
+    #hint {
+      text-align: center;
+      color: white;
+      background: rgba(0,0,0,.55);
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+  </style>
+
+  <script>
+    AFRAME.registerComponent('fan-control', {
+      init: function () {
+        this.blades = this.el.querySelector('#blades');
+        this.fanOn = false;
+        this.speed = 0;
+
+        window.fanController = this;
+      },
+
+      tick: function (time, delta) {
+        if (!this.blades || !this.fanOn) return;
+
+        const dt = delta / 1000;
+
+        // หมุนใบพัดรอบแกน Z
+        this.blades.object3D.rotation.z +=
+          THREE.MathUtils.degToRad(this.speed * dt);
+      },
+
+      togglePower: function () {
+        this.fanOn = !this.fanOn;
+        this.speed = this.fanOn ? 650 : 0;
+        return this.fanOn;
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const marker = document.querySelector('#hiroMarker');
+      const status = document.querySelector('#status');
+      const powerBtn = document.querySelector('#powerBtn');
+      const tempBtn = document.querySelector('#tempBtn');
+      const temperatureBox = document.querySelector('#temperatureBox');
+
+      marker.addEventListener('markerFound', () => {
+        status.textContent = 'พบ Hiro marker แล้ว ✓';
+        status.style.background = 'rgba(18,135,78,.82)';
+      });
+
+      marker.addEventListener('markerLost', () => {
+        status.textContent = 'กำลังค้นหา Hiro marker...';
+        status.style.background = 'rgba(0,0,0,.68)';
+      });
+
+      powerBtn.addEventListener('click', () => {
+        const c = window.fanController;
+        if (!c) return;
+
+        const isOn = c.togglePower();
+
+        powerBtn.textContent =
+          isOn ? 'ปิดพัดลม' : 'เปิดพัดลม';
+
+        powerBtn.style.background =
+          isOn
+          ? 'rgba(210, 65, 65, .95)'
+          : 'rgba(20, 155, 100, .95)';
+      });
+
+      tempBtn.addEventListener('click', () => {
+        // ค่าจำลองเพื่อให้ใช้งานได้ทันทีโดยไม่ต้องใช้ Weather API
+        const temperature = (26 + Math.random() * 4).toFixed(1);
+
+        temperatureBox.textContent =
+          `อุณหภูมิ ${temperature} °C`;
+
+        temperatureBox.style.display = 'block';
+
+        setTimeout(() => {
+          temperatureBox.style.display = 'none';
+        }, 5000);
+      });
+    });
+  </script>
+</head>
+
+<body>
+
+  <div id="ui">
+    <div id="status">กำลังค้นหา Hiro marker...</div>
+
+    <div id="temperatureBox">
+      อุณหภูมิ 27.0 °C
+    </div>
+
+    <div class="buttons">
+      <button id="powerBtn">เปิดพัดลม</button>
+      <button id="tempBtn">แสดงอุณหภูมิ</button>
+    </div>
+
+    <div id="hint">
+      ส่องกล้องไปที่ Hiro marker<br>
+      จากนั้นใช้ปุ่มด้านล่างเพื่อควบคุมพัดลม
+    </div>
+  </div>
+
+  <a-scene
+    embedded
+    vr-mode-ui="enabled: false"
+    renderer="logarithmicDepthBuffer: true; antialias: true;"
+    arjs="
+      sourceType: webcam;
+      debugUIEnabled: false;
+      detectionMode: mono;
+    "
+  >
+
+    <a-marker
+      id="hiroMarker"
+      preset="hiro"
+      emitevents="true"
+      smooth="true"
+      smooth-count="5"
+      smooth-tolerance="0.01"
+      smooth-threshold="2"
+    >
+
+      <!-- Fan -->
+      <a-entity
+        id="fan"
+        fan-control
+        position="0 0 0"
+        scale="0.78 0.78 0.78"
+      >
+
+        <!-- ฐาน -->
+        <a-cylinder
+          position="0 0.08 0"
+          radius="0.52"
+          height="0.16"
+          color="#30343B">
+        </a-cylinder>
+
+        <!-- คอพัดลม -->
+        <a-cylinder
+          position="0 0.72 0"
+          radius="0.09"
+          height="1.25"
+          color="#BFC7D0">
+        </a-cylinder>
+
+        <!-- ข้อต่อ -->
+        <a-sphere
+          position="0 1.36 0"
+          radius="0.16"
+          color="#555E69">
+        </a-sphere>
+
+        <!-- หัวพัดลม -->
+        <a-entity position="0 1.63 0">
+
+          <!-- ตะแกรงหลัง -->
+          <a-torus
+            position="0 0 0"
+            rotation="0 90 0"
+            radius="0.56"
+            radius-tubular="0.035"
+            color="#6F7A87"
+            segments-radial="64">
+          </a-torus>
+
+          <!-- วงตะแกรงกลาง -->
+          <a-torus
+            position="0 0 0.01"
+            rotation="0 90 0"
+            radius="0.39"
+            radius-tubular="0.018"
+            color="#87919C"
+            segments-radial="48">
+          </a-torus>
+
+          <!-- ใบพัด -->
+          <a-entity id="blades" position="0 0 0.05">
+
+            <a-box
+              position="0 0.28 0"
+              width="0.16"
+              height="0.52"
+              depth="0.055"
+              color="#61B7E8"
+              rotation="0 0 0">
+            </a-box>
+
+            <a-box
+              position="0.28 0 0"
+              width="0.52"
+              height="0.16"
+              depth="0.055"
+              color="#61B7E8"
+              rotation="0 0 0">
+            </a-box>
+
+            <a-box
+              position="0 -0.28 0"
+              width="0.16"
+              height="0.52"
+              depth="0.055"
+              color="#61B7E8"
+              rotation="0 0 0">
+            </a-box>
+
+            <a-box
+              position="-0.28 0 0"
+              width="0.52"
+              height="0.16"
+              depth="0.055"
+              color="#61B7E8"
+              rotation="0 0 0">
+            </a-box>
+
+            <!-- จานกลาง -->
+            <a-cylinder
+              position="0 0 0.04"
+              rotation="90 0 0"
+              radius="0.11"
+              height="0.10"
+              color="#2E7DAB">
+            </a-cylinder>
+          </a-entity>
+
+          <!-- ตะแกรงหน้า -->
+          <a-torus
+            position="0 0 0.11"
+            rotation="0 90 0"
+            radius="0.56"
+            radius-tubular="0.035"
+            color="#A3ACB5"
+            segments-radial="64">
+          </a-torus>
+
+          <!-- ซี่แนวนอน -->
+          <a-box
+            position="0 0 0.12"
+            width="1.02"
+            height="0.025"
+            depth="0.025"
+            color="#A3ACB5">
+          </a-box>
+
+          <!-- ซี่แนวตั้ง -->
+          <a-box
+            position="0 0 0.12"
+            width="0.025"
+            height="1.02"
+            depth="0.025"
+            color="#A3ACB5">
+          </a-box>
+        </a-entity>
+
+        <!-- ปุ่มควบคุมบนฐาน -->
+        <a-cylinder
+          position="-0.16 0.19 -0.22"
+          rotation="90 0 0"
+          radius="0.055"
+          height="0.025"
+          color="#45C06B">
+        </a-cylinder>
+
+        <a-cylinder
+          position="0 0.19 -0.22"
+          rotation="90 0 0"
+          radius="0.055"
+          height="0.025"
+          color="#FFD15C">
+        </a-cylinder>
+
+        <a-cylinder
+          position="0.16 0.19 -0.22"
+          rotation="90 0 0"
+          radius="0.055"
+          height="0.025"
+          color="#E85B5B">
+        </a-cylinder>
+
+      </a-entity>
+    </a-marker>
+
+    <a-entity camera></a-entity>
+  </a-scene>
+</body>
+</html>
